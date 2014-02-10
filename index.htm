@@ -14,7 +14,8 @@
 		<script type='text/javascript' src="lib/knockout.js"></script>
 		<script type='text/javascript' src="lib/pixastic.core.js"></script>
 		<script type='text/javascript' src="lib/actions/mosaic.js"></script>
-			<script type='text/javascript' src="lib/actions/desaturate.js"></script>
+		<script type='text/javascript' src="lib/actions/desaturate.js"></script>
+		<script type='text/javascript' src="lib/actions/posterize.js"></script>
 
 		<!--	<script type='text/javascript' src="lib/canvaskit.all.js"></script>-->
 
@@ -27,9 +28,9 @@
 		<div>
 
 			<input id="photopath" type="file" size="50" name="file" />
-			<button  data-bind="click: process">
-				load
-			</button>
+			<span>Blockgröße:</span><input id="blocksize" type="number" size="5" data-bind="value: blockSize" />
+			<span>Farbanzahl (Level)</span><input id="level" type="number" size="5" data-bind="value: posterizeLevel" />
+			<button data-bind="click: redo" >Redo</button>
 		</div>
 		<script>
 			window.addEventListener("load", function() {
@@ -48,19 +49,46 @@
 						if (files.length == 1) {
 							var img = new Image;
 							img.src = URL.createObjectURL(files[0]);
+							this.image = img;
 							img.onload = function() {
-								Pixastic.process(img, "mosaic", {blockSize:10}, function (ret){
+								this.redo();
+							/*	Pixastic.process(img, "mosaic", {blockSize: this.blockSize()}, function (ret){
 									Pixastic.process(ret, "desaturate", {average : false}, function (ret)
 									{
-										this.ctxt.drawImage(ret, 20, 20);
-										alert('the image is drawn');
-										this.image = img;
+										Pixastic.process(ret, "posterize", {levels : this.posterizeLevel()}, function (ret)
+										{
+											this.ctxt.drawImage(ret, 20, 20);
+											alert('the image is drawn');
+											
+										}.bind(this));
+									}.bind(this));
+								}.bind(this));
+								*/
+								
+							}.bind(this);
+						}
+					};
+					this.clear = function ()
+					{
+						this.ctxt.clearRect(0, 0, this.canvas.width, this.canvas.height);
+					};
+					this.redo = function ()
+					{
+						this.clear();
+						Pixastic.process(this.image, "mosaic", {blockSize: this.blockSize()}, function (ret){
+									Pixastic.process(ret, "desaturate", {average : false}, function (ret)
+									{
+										Pixastic.process(ret, "posterize", {levels : this.posterizeLevel()}, function (ret)
+										{
+											this.ctxt.drawImage(ret, 20, 20);
+											alert('the image is drawn');
+											this.image = img;
+										}.bind(this));
 									}.bind(this));
 								
 								}.bind(this));
 								
-							}.bind(this);
-						}
+							
 					};
 					this.process = function() {
 							var processd = Pixastic.process(this.image, "mosaic", {blockSize:10});
@@ -68,6 +96,9 @@
 					
 					};
 					this.pathToPhoto = ko.observable("");
+					this.blockSize = ko.observable(10);
+					this.posterizeLevel = ko.observable(10);
+					
 			};
 			var vm = new ViewModel();
 			vm.init($("#photocanvas")[0]);
