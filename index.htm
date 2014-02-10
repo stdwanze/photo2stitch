@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html class="no-js">
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<title>Photo2Stitch</title>
+		<meta name="description" content="">
+		<!--	<meta name="viewport" content="height=400, user-scalable=no">-->
+
+		<!-- Place favicon.ico and apple-touch-icon(s) in the root directory -->
+		<link rel="icon" href="img/overview_16.png" type="image/png">
+		<link href="css/styles.css" media="screen" rel="stylesheet" type="text/css" />
+		<script type='text/javascript' src="lib/jquery.1.10.2.min.js"></script>
+		<script type='text/javascript' src="lib/knockout.js"></script>
+		<script type='text/javascript' src="lib/pixastic.core.js"></script>
+		<script type='text/javascript' src="lib/actions/mosaic.js"></script>
+			<script type='text/javascript' src="lib/actions/desaturate.js"></script>
+
+		<!--	<script type='text/javascript' src="lib/canvaskit.all.js"></script>-->
+
+	</head>
+	<body>
+
+		<div id="gamepane">
+			<canvas id="photocanvas" width="640" height="400"></canvas>
+		</div>
+		<div>
+
+			<input id="photopath" type="file" size="50" name="file" />
+			<button  data-bind="click: process">
+				load
+			</button>
+		</div>
+		<script>
+			window.addEventListener("load", function() {
+				var ViewModel = function() {
+					this.canvas = null;
+					this.ctxt = null;
+					this.image = null;
+					this.init = function(canvas) {
+						this.canvas = canvas;
+						this.ctxt = canvas.getContext("2d");
+
+						$("#photopath")[0].addEventListener("change", this.show.bind(this), false);
+					};
+					this.show = function(evt) {
+						var files = evt.target.files;
+						if (files.length == 1) {
+							var img = new Image;
+							img.src = URL.createObjectURL(files[0]);
+							img.onload = function() {
+								Pixastic.process(img, "mosaic", {blockSize:10}, function (ret){
+									Pixastic.process(ret, "desaturate", {average : false}, function (ret)
+									{
+										this.ctxt.drawImage(ret, 20, 20);
+										alert('the image is drawn');
+										this.image = img;
+									}.bind(this));
+								
+								}.bind(this));
+								
+							}.bind(this);
+						}
+					};
+					this.process = function() {
+							var processd = Pixastic.process(this.image, "mosaic", {blockSize:10});
+							this.ctxt.drawImage(processd, 20, 20);
+					
+					};
+					this.pathToPhoto = ko.observable("");
+			};
+			var vm = new ViewModel();
+			vm.init($("#photocanvas")[0]);
+			ko.applyBindings(vm);
+			});
+
+		</script>
+	</body>
+</html>
