@@ -16,7 +16,7 @@
 		<script type='text/javascript' src="lib/actions/mosaic.js"></script>
 		<script type='text/javascript' src="lib/actions/desaturate.js"></script>
 		<script type='text/javascript' src="lib/actions/posterize.js"></script>
-
+		<script type='text/javascript' src="lib/actions/resize.js"></script>
 		<!--	<script type='text/javascript' src="lib/canvaskit.all.js"></script>-->
 
 	</head>
@@ -61,32 +61,89 @@
 					{
 						this.ctxt.clearRect(0, 0, this.canvas.width, this.canvas.height);
 					};
+					this.getScaledDimensions = function (image)
+					{
+						var newDimensions = {
+							width : 1,
+							height : 1
+						};
+						
+						var xScale = image.width / this.canvas.width;
+						var yScale = image.height / (this.canvas.height-this.yOffSet);
+						var scale = xScale > yScale ? xScale : yScale;
+						
+						newDimensions.width = Math.floor(image.width /scale);
+						newDimensions.height = Math.floor(image.height /scale);
+						
+						return newDimensions;
+					};
 					this.redo = function ()
 					{
 						this.clear();
-						Pixastic.process(this.image, "mosaic", {blockSize: this.blockSize()}, function (ret){
-									Pixastic.process(ret, "desaturate", {average : false}, function (ret)
-									{
-										Pixastic.process(ret, "posterize", {levels : this.posterizeLevel()}, function (ret)
-										{
+						
+						var dimensions = this.getScaledDimensions(this.image);
+						Pixastic.process(this.image, "resize", dimensions).done( function (ret){ 
+						Pixastic.process(ret, "mosaic", {blockSize: this.blockSize()}).done(function (ret){
+						Pixastic.process(ret, "desaturate", {average : false}).done( function (ret)	{
+						Pixastic.process(ret, "posterize", {levels : this.posterizeLevel()}).done( function (ret){
+											this.image = ret;
 											this.ctxt.drawImage(ret, 20, 20);
+											this.applyLines();
 											alert('Processing finished!');
-											this.image = img;
-										}.bind(this));
-									}.bind(this));
-								
-								}.bind(this));
-								
-							
+											
+											
+						}.bind(this));
+						}.bind(this));
+						}.bind(this));
+						}.bind(this));
 					};
 					this.process = function() {
 							var processd = Pixastic.process(this.image, "mosaic", {blockSize:10});
 							this.ctxt.drawImage(processd, 20, 20);
 					
 					};
+					
+					this.applyLines = function (){
+						
+						
+						
+						var row = 0,column = 0;
+						
+						while(row < this.canvas.height && row < (this.image.height+2*this.blockSize()))
+						{
+							 this.ctxt.strokeStyle = '#848484';
+							 this.ctxt.lineWidth = 1;
+							 this.ctxt.beginPath();
+						     this.ctxt.moveTo(0,row);
+						     this.ctxt.lineTo(this.image.width+4*this.blockSize(),row);
+							
+							 this.ctxt.closePath();
+							 this.ctxt.stroke();
+							
+							row += this.blockSize();
+						}
+						
+						while(column < this.canvas.width && column <= (this.image.width+4*this.blockSize()))
+						{
+							 this.ctxt.strokeStyle = '#848484';
+							 this.ctxt.lineWidth = 1;
+							 this.ctxt.beginPath();
+						     this.ctxt.moveTo(column,0);
+						     this.ctxt.lineTo(column,this.canvas.height);
+							
+							 this.ctxt.closePath();
+							 this.ctxt.stroke();
+							
+							column += this.blockSize();
+						}
+						
+					};
 					this.pathToPhoto = ko.observable("");
 					this.blockSize = ko.observable(10);
 					this.posterizeLevel = ko.observable(4);
+					this.yOffSet = 20;
+					this.xOffSet = 20;
+					
 					
 			};
 			var vm = new ViewModel();
