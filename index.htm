@@ -12,11 +12,14 @@
 		<link href="css/styles.css" media="screen" rel="stylesheet" type="text/css" />
 		<script type='text/javascript' src="lib/jquery.1.10.2.min.js"></script>
 		<script type='text/javascript' src="lib/knockout.js"></script>
+		<script type='text/javascript' src="lib/koExtender.js"></script>
 		<script type='text/javascript' src="lib/pixastic.core.js"></script>
 		<script type='text/javascript' src="lib/actions/mosaic.js"></script>
+		<script type='text/javascript' src="lib/actions/numberedmosaic.js"></script>
 		<script type='text/javascript' src="lib/actions/desaturate.js"></script>
 		<script type='text/javascript' src="lib/actions/posterize.js"></script>
 		<script type='text/javascript' src="lib/actions/resize.js"></script>
+		<script type='text/javascript' src="lib/actions/crop.js"></script>
 		<!--	<script type='text/javascript' src="lib/canvaskit.all.js"></script>-->
 
 	</head>
@@ -27,17 +30,23 @@
 		</div>
 		<div>
 
-			<input id="photopath" type="file" size="50" name="file" />
+			<input id="photopath" type="file" size="50" name="file" /><div>
 			<span>Blockgröße:</span><input id="blocksize" type="number" size="5" data-bind="value: blockSize" />
 			<span>Farbanzahl (Level)</span><input id="level" type="number" size="5" data-bind="value: posterizeLevel" />
+			<span>Mit römischen Zahlen<input type="checkbox" data-bind="value: withRomanNumbers"></span>
+			</div>
 			<button data-bind="click: redo" >Redo</button>
 		</div>
 		<script>
 			window.addEventListener("load", function() {
+				
+				
+				
 				var ViewModel = function() {
 					this.canvas = null;
 					this.ctxt = null;
 					this.image = null;
+					this.orgImage = null;
 					this.init = function(canvas) {
 						this.canvas = canvas;
 						this.ctxt = canvas.getContext("2d");
@@ -49,8 +58,9 @@
 						if (files.length == 1) {
 							var img = new Image;
 							img.src = URL.createObjectURL(files[0]);
-							this.image = img;
+							this.orgImage = img;
 							img.onload = function() {
+								
 								this.redo();
 						
 								
@@ -68,34 +78,58 @@
 							height : 1
 						};
 						
-						var xScale = image.width / this.canvas.width;
-						var yScale = image.height / (this.canvas.height-this.yOffSet);
+						var xScale = image.width / (this.canvas.width-2*this.xOffSet);
+						var yScale = image.height / (this.canvas.height-2*this.yOffSet);
 						var scale = xScale > yScale ? xScale : yScale;
 						
-						newDimensions.width = Math.floor(image.width /scale);
+						newDimensions.width = Math.floor(image.width /scale) ;
 						newDimensions.height = Math.floor(image.height /scale);
 						
+												
 						return newDimensions;
+					};
+					this.cropDimensionsTo = function (dimensions,baseSize)
+					{
+						var width = dimensions.width - dimensions.width % baseSize;
+						var height = dimensions.height - dimensions.height % baseSize;
+						
+						var ret = { rect: {left: 0, top: 0, width: width, height: height }};
+						
+						return ret;
 					};
 					this.redo = function ()
 					{
+						this.image = this.orgImage;
 						this.clear();
 						
 						var dimensions = this.getScaledDimensions(this.image);
 						Pixastic.process(this.image, "resize", dimensions).done( function (ret){ 
-						Pixastic.process(ret, "mosaic", {blockSize: this.blockSize()}).done(function (ret){
+						Pixastic.process(ret,"crop",this.cropDimensionsTo(dimensions,this.blockSize())).done(function (ret){
 						Pixastic.process(ret, "desaturate", {average : false}).done( function (ret)	{
-						Pixastic.process(ret, "posterize", {levels : this.posterizeLevel()}).done( function (ret){
-											this.image = ret;
+						Pixastic.process(ret, "mosaic", {blockSize: this.blockSize()}).done(function (ret){
+						Pixastic.process(ret, "posterize", {levels : this.posterizeLevel()+1}).done( function (ret){
+							
+							if(this.withRomanNumbers())
+							{
+									Pixastic.process(ret, "numberedmosaic", {blockSize : this.blockSize()}).done( function (ret){
+										this.draw(ret);
+									}.bind(this));
+							}
+							else this.draw(ret);
+							
+						}.bind(this));
+						}.bind(this));
+						}.bind(this));
+						}.bind(this));
+						}.bind(this));
+					};
+					this.draw = function (ret)
+					{
+						this.image = ret;
 											this.ctxt.drawImage(ret, 20, 20);
 											this.applyLines();
 											alert('Processing finished!');
 											
-											
-						}.bind(this));
-						}.bind(this));
-						}.bind(this));
-						}.bind(this));
 					};
 					this.process = function() {
 							var processd = Pixastic.process(this.image, "mosaic", {blockSize:10});
@@ -109,13 +143,13 @@
 						
 						var row = 0,column = 0;
 						
-						while(row < this.canvas.height && row < (this.image.height+2*this.blockSize()))
+						while(row < this.canvas.height && row < (this.image.height+2*this.yOffSet))
 						{
 							 this.ctxt.strokeStyle = '#848484';
-							 this.ctxt.lineWidth = 1;
+							 this.ctxt.lineWidth = .5;
 							 this.ctxt.beginPath();
 						     this.ctxt.moveTo(0,row);
-						     this.ctxt.lineTo(this.image.width+4*this.blockSize(),row);
+						     this.ctxt.lineTo(this.image.width+2*this.yOffSet,row);
 							
 							 this.ctxt.closePath();
 							 this.ctxt.stroke();
@@ -123,10 +157,10 @@
 							row += this.blockSize();
 						}
 						
-						while(column < this.canvas.width && column <= (this.image.width+4*this.blockSize()))
+						while(column < this.canvas.width && column <= (this.image.width+2*this.xOffSet))
 						{
 							 this.ctxt.strokeStyle = '#848484';
-							 this.ctxt.lineWidth = 1;
+							 this.ctxt.lineWidth = .5;
 							 this.ctxt.beginPath();
 						     this.ctxt.moveTo(column,0);
 						     this.ctxt.lineTo(column,this.canvas.height);
@@ -139,10 +173,11 @@
 						
 					};
 					this.pathToPhoto = ko.observable("");
-					this.blockSize = ko.observable(10);
-					this.posterizeLevel = ko.observable(4);
+					this.blockSize = ko.observable(10).extend({ numeric: 0});
+					this.posterizeLevel = ko.observable(4).extend({ numeric: 0});
 					this.yOffSet = 20;
 					this.xOffSet = 20;
+					this.withRomanNumbers = ko.observable(false);
 					
 					
 			};
