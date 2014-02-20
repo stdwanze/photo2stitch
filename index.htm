@@ -24,11 +24,29 @@
 
 	</head>
 	<body>
-
-		<div id="gamepane">
-			<canvas id="photocanvas" width="1024" height="600"></canvas>
-		</div>
-		<div>
+		<div class="windows8" data-bind="visible: showWait">
+<div class="wBall" id="wBall_1">
+<div class="wInnerBall">
+</div>
+</div>
+<div class="wBall" id="wBall_2">
+<div class="wInnerBall">
+</div>
+</div>
+<div class="wBall" id="wBall_3">
+<div class="wInnerBall">
+</div>
+</div>
+<div class="wBall" id="wBall_4">
+<div class="wInnerBall">
+</div>
+</div>
+<div class="wBall" id="wBall_5">
+<div class="wInnerBall">
+</div>
+</div>
+</div>
+	<div>
 
 			<input id="photopath" type="file" size="50" name="file" /><div>
 			<span>Blockgröße:</span><input id="blocksize" type="number" size="5" data-bind="value: blockSize" />
@@ -37,6 +55,10 @@
 			</div>
 			<button data-bind="click: redo" >Redo</button>
 		</div>
+		<div id="gamepane">
+			<canvas id="photocanvas" width="1024" height="1024"></canvas>
+		</div>
+		
 		<script>
 			window.addEventListener("load", function() {
 				
@@ -99,6 +121,10 @@
 					};
 					this.redo = function ()
 					{
+						this.showWait(true);
+						setTimeout(function (){ this.run();}.bind(this),100);
+					};
+					this.run = function (){
 						this.image = this.orgImage;
 						this.clear();
 						
@@ -126,9 +152,9 @@
 					this.draw = function (ret)
 					{
 						this.image = ret;
-											this.ctxt.drawImage(ret, 20, 20);
-											this.applyLines();
-											alert('Processing finished!');
+						this.ctxt.drawImage(ret, 20, 20);
+						this.applyLines();
+						this.showWait(false);
 											
 					};
 					this.process = function() {
@@ -178,7 +204,7 @@
 					this.yOffSet = 20;
 					this.xOffSet = 20;
 					this.withRomanNumbers = ko.observable(false);
-					
+					this.showWait = ko.observable(false);
 					
 			};
 			var vm = new ViewModel();
